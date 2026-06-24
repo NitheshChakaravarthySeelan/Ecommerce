@@ -2,6 +2,9 @@ package com.ecommerce.auth.config;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -17,17 +20,31 @@ import java.util.Date;
  *
  * <p><b>Important:</b> The gateway's JWT_SECRET must match this one.
  * If they differ, the gateway will reject tokens issued by this service.
+ *
+ * <p>Fails at startup if the JWT secret is not configured or is too short.
  */
 @Component
 public class JwtConfig {
 
-    private final SecretKey key;
-    private final long expirationMs;
+    private static final Logger log = LoggerFactory.getLogger(JwtConfig.class);
 
-    public JwtConfig(@Value("${jwt.secret:dev-secret-key-that-is-at-least-256-bits-long-for-hs256}") String secret,
+    private final String secret;
+    private final long expirationMs;
+    private SecretKey key;
+
+    public JwtConfig(@Value("${jwt.secret}") String secret,
                      @Value("${jwt.expiration-ms:86400000}") long expirationMs) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.secret = secret;
         this.expirationMs = expirationMs;
+    }
+
+    @PostConstruct
+    public void init() {
+        if (secret == null || secret.isBlank() || secret.length() < 32) {
+            log.error("JWT secret must be at least 32 characters. Set jwt.secret in application.properties or JWT_SECRET env var.");
+            throw new IllegalStateException("JWT secret is missing or too short (min 32 chars for HS256)");
+        }
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
     /** Create a signed JWT for the given user. Claims: sub=userId, email, role. */

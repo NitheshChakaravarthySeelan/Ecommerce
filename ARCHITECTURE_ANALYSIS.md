@@ -407,14 +407,12 @@ with SessionLocal() as session:
 - **Impact:** FastAPI async endpoints call **synchronous** SQLAlchemy operations, blocking the asyncio event loop. Under load, all concurrent requests are serialized. This negates the benefits of async I/O.
 - **Fix:** Use `AsyncSession` from `sqlalchemy.ext.asyncio` with `async with session.begin()`.
 
-#### 🔴 CRITICAL: Hardcoded JWT Secret Fallbacks
+#### ~~🔴 CRITICAL: Hardcoded JWT Secret Fallbacks~~ ✅ RESOLVED
 
-Two different defaults exist:
-- **Gateway** (`api-gateway/src/index.js:8`): `'dev-secret-key-that-is-at-least-256-bits-long-for-hs256'`
-- **Auth** (`application.properties` / `JwtConfig.java:18`): `'dev-secret-key-that-is-at-least-256-bits-long-for-hs256'`
-
-- **Impact:** If environment variables are misconfigured, the gateway and auth service sign/verify with different secrets. Users get 403 errors and the root cause is non-obvious.
-- **Fix:** Fail at startup if `JWT_SECRET` is not set. Use a single source of truth (e.g., a Docker secret).
+**Both the gateway and auth service now fail at startup if `JWT_SECRET` is not set or is under 32 characters.**
+- `JwtConfig.java`: removed `@Value` default, added `@PostConstruct` validation (≥32 chars check)
+- `api-gateway/src/index.js`: removed `||` fallback, `process.exit(1)` if secret is missing/short
+- `application.properties`: removed `:dev-secret-key-...` default from `${JWT_SECRET}`
 
 #### 🔴 CRITICAL: No Authentication on Inter-Service Calls
 
@@ -479,12 +477,9 @@ A single abusive client can DoS the entire platform. A downstream service failur
 
 Cart data is persisted **only in Redis** with no RDB/AOF persistence or replication configured. If Redis crashes or restarts, all user carts are lost. There's no fallback to PostgreSQL.
 
-#### 🟠 HIGH: Spring Boot Version Mismatch
+#### ~~🟠 HIGH: Spring Boot Version Mismatch~~ ✅ RESOLVED
 
-- Orchestrator: **3.1.5**
-- Auth, Saga, Shipping: **3.3.3**
-
-Different minor versions may have incompatible internal APIs, security patches, and behavior differences.
+**All services now use Spring Boot 3.3.3.** The orchestrator's `pom.xml` parent was updated from `3.1.5` → `3.3.3`.
 
 #### 🟠 HIGH: Global CORS (Allow-Origin: *)
 

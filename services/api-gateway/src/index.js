@@ -26,7 +26,11 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-that-is-at-least-256-bits-long-for-hs256';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+    console.error('FATAL: JWT_SECRET environment variable must be set and at least 32 characters');
+    process.exit(1);
+}
 
 // ── Global middleware ─────────────────────────────────────────────
 
