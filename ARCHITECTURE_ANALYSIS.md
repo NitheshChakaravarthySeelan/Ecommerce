@@ -386,14 +386,13 @@ Frontend                  API Gateway            Services                       
 - `orchestrator-java/.../OrderSagaOrchestrator.java` — `acquireSaga()` now catches `DataIntegrityViolationException` (unique constraint safety net)
 - `orchestrator-java/src/main/resources/application.yml` — `enable.idempotence: true`, `acks: all`, `max.in.flight.requests.per.connection: 5`, `isolation.level: read_committed`
 
-#### 🔴 CRITICAL: No Dead Letter Queue (DLQ) for Kafka
+#### ~~🔴 CRITICAL: No Dead Letter Queue (DLQ) for Kafka~~ ✅ RESOLVED
 
-Every Kafka consumer that encounters an error either:
-- **Silently swallows it** (ShippingSagaListener.java:55-57): `log.error(...)` but does NOT rethrow. The offset is committed, the event is lost forever.
-- **Calls failSaga()** (Orchestrator): But if the failSaga() itself fails (e.g., inventory service is down for release), the exception propagates and the event is re-delivered — causing an infinite retry loop.
-
-- **Impact:** Events can be silently dropped or infinitely retried with no observability.
-- **Fix:** Configure ` suicide.on.exception` or use a Dead Letter Topic. Implement `CommonContainerStopperAfterMaxRetries` or manual DLQ publishing.
+**Both the shipping and orchestrator consumers now use `DefaultErrorHandler` + `DeadLetterPublishingRecoverer`:**
+- Failed messages are retried 3 times (100 ms apart) then published to `<original-topic>.DLT`
+- Shipping: `ShippingSagaListener` now rethrows exceptions (was silently swallowing them)
+- Orchestrator: `KafkaConfig.java` configures the error handler with DLQ recoverer
+- The `KafkaConfig` beans in both services set this up automatically
 
 #### 🔴 CRITICAL: Synchronous SQLAlchemy in Async FastAPI (Order & Payment)
 

@@ -54,9 +54,9 @@ public class ShippingSagaListener {
      * and an estimated delivery date 5 days from now, then publishes
      * a {@code shipping-dispatched} event back to Kafka.
      *
-     * <p><b>Known issue:</b> exceptions are logged but not rethrown.
-     * If publishing the event fails, the offset is still committed and
-     * the message is lost. A dead-letter queue should be added.
+     * <p>Exceptions are rethrown and handled by {@code DefaultErrorHandler}
+     * which retries 3 times then publishes the failed message to a DLQ
+     * topic ({@code shipping-initiated.DLT}).
      */
     @KafkaListener(topics = "shipping-initiated", groupId = "shipping-group")
     public void handleShippingInitiated(ShippingInitiatedEvent event) {
@@ -84,6 +84,7 @@ public class ShippingSagaListener {
             log.info("Published shipping-dispatched for order: {} [traceId: {}]", event.getOrderId(), event.getTraceId());
         } catch (Exception e) {
             log.error("Failed to process shipping for order: {} [traceId: {}]", event.getOrderId(), event.getTraceId(), e);
+            throw e; // rethrow so the DLQ error handler catches and routes to DLQ
         } finally {
             MDC.clear();
         }
