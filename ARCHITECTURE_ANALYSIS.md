@@ -493,9 +493,12 @@ Cart data is persisted **only in Redis** with no RDB/AOF persistence or replicat
 
 ### 4.3 Medium Priority Issues
 
-#### 🟡 MEDIUM: No Connection Pool Limits
+#### ~~🟡 MEDIUM: No Connection Pool Limits~~ ✅ RESOLVED
 
-All services use default connection pool sizing (HikariCP defaults = 10, SQLAlchemy defaults). No max pool size is configured. Under load, all services can exhaust the shared PostgreSQL's `max_connections`.
+**All services now have explicit pool limits:**
+- Java services: `spring.datasource.hikari.maximum-pool-size=${DB_POOL_MAX:10}`, min-idle=2, timeout=5s
+- Python services (order, payment): `pool_size=5`, `max_overflow=5`, `pool_pre_ping=True`
+- All configurable via environment variables (`DB_POOL_MAX`, `DB_POOL_SIZE`, etc.)
 
 #### 🟡 MEDIUM: Hardcoded Service URLs in Orchestrator
 

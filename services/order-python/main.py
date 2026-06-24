@@ -59,7 +59,14 @@ DATABASE_URL = os.getenv(
 )
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
 
-engine = create_engine(DATABASE_URL, future=True)
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=int(os.getenv("DB_POOL_SIZE", "5")),
+    max_overflow=int(os.getenv("DB_POOL_OVERFLOW", "5")),
+    pool_pre_ping=True,
+    pool_recycle=300,
+    future=True,
+)
 SessionLocal = sessionmaker(bind=engine, future=True)
 Base = declarative_base()
 
