@@ -509,9 +509,12 @@ private static final String ORDER_URL = "http://order-python:8087/orders";
 
 These are hardcoded constants rather than environment variables or service discovery (Consul, Eureka, K8s DNS).
 
-#### 🟡 MEDIUM: No Graceful Shutdown in Python Services
+#### ~~🟡 MEDIUM: No Graceful Shutdown in Python Services~~ ✅ RESOLVED
 
-The cart, order, and payment services don't handle SIGTERM properly. Kafka producers and consumers may not flush/commit on shutdown, causing data loss or duplicate processing.
+**Order and payment services now use `asyncio.Event` + `asyncio.wait_for` for graceful shutdown:**
+- Kafka consumers poll with a 1-second timeout and exit when `shutdown_event` is set
+- Lifespan `finally` block cancels the background consumer task and stops the producer
+- Cart service (Redis-only) shuts down cleanly via uvicorn's default lifespan handling
 
 #### 🟡 MEDIUM: HTTP 500 vs Meaningful Error Responses
 

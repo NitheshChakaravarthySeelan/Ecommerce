@@ -150,7 +150,11 @@ async def handle_order_completed():
     )
     await consumer.start()
     try:
-        async for msg in consumer:
+        while not shutdown_event.is_set():
+            try:
+                msg = await asyncio.wait_for(consumer.getone(), timeout=1.0)
+            except asyncio.TimeoutError:
+                continue
             data = msg.value
             order_id = data.get("orderId")
             trace_id = data.get("traceId", "")
@@ -170,16 +174,28 @@ async def handle_order_completed():
 
 # ── Application lifecycle ──────────────────────────────────────────
 
+shutdown_event = asyncio.Event()
+consumer_task = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup: create Kafka producer and launch the saga-result consumer."""
-    global producer
+    global producer, consumer_task
     producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
     await producer.start()
-    asyncio.create_task(handle_order_completed())
+    consumer_task = asyncio.create_task(handle_order_completed())
     logger.info("Order service started")
-    yield
-    await producer.stop()
+    try:
+        yield
+    finally:
+        shutdown_event.set()
+        if consumer_task:
+            consumer_task.cancel()
+            try:
+                await consumer_task
+            except asyncio.CancelledError:
+                pass
+        await producer.stop()
 
 app = FastAPI(lifespan=lifespan)
 

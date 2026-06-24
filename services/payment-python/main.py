@@ -139,6 +139,20 @@ async def handle_payment_initiated():
 
     This is a mock implementation — no real payment gateway is called.
     """
+shutdown_event = asyncio.Event()
+consumer_task = None
+
+async def handle_payment_initiated():
+    """
+    Background task: consume `payment-initiated` events from Kafka.
+
+    For each event:
+      1. Determine status: SUCCEEDED if amount > 0, FAILED otherwise
+      2. Save the payment record to PostgreSQL
+      3. Publish `payment-processed` back to Kafka
+
+    This is a mock implementation — no real payment gateway is called.
+    """
     consumer = AIOKafkaConsumer(
         "payment-initiated",
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
@@ -147,7 +161,11 @@ async def handle_payment_initiated():
     )
     await consumer.start()
     try:
-        async for msg in consumer:
+        while not shutdown_event.is_set():
+            try:
+                msg = await asyncio.wait_for(consumer.getone(), timeout=1.0)
+            except asyncio.TimeoutError:
+                continue
             data = msg.value
             order_id = data.get("orderId")
             amount = data.get("amount", 0)
@@ -178,9 +196,22 @@ async def handle_payment_initiated():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup: create Kafka producer and launch the payment-initiated consumer."""
-    global producer
+    global producer, consumer_task
     producer = AIOKafkaProducer(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
     await producer.start()
+    consumer_task = asyncio.create_task(handle_payment_initiated())
+    logger.info("Payment service started")
+    try:
+        yield
+    finally:
+        shutdown_event.set()
+        if consumer_task:
+            consumer_task.cancel()
+            try:
+                await consumer_task
+            except asyncio.CancelledError:
+                pass
+        await producer.stop()
     asyncio.create_task(handle_payment_initiated())
     logger.info("Payment service started")
     yield
