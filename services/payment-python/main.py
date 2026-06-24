@@ -215,6 +215,20 @@ def health():
     return {"status": "ok"}
 
 
+@app.get('/payments/{payment_id}', response_model=PaymentResponse)
+def get_payment(payment_id: str):
+    """Return a payment record by its UUID. Returns 404 if not found."""
+    with SessionLocal() as session:
+        payment_db = session.query(PaymentDB).filter_by(payment_id=payment_id).first()
+        if not payment_db:
+            raise HTTPException(status_code=404, detail='Payment not found')
+        return PaymentResponse(
+            payment_id=payment_db.payment_id,
+            order_id=payment_db.order_id,
+            status=payment_db.status,
+        )
+
+
 @app.post('/payments', response_model=PaymentResponse)
 def process_payment(request: PaymentRequest):
     """

@@ -428,14 +428,14 @@ ResponseEntity<Map> resp = restTemplate.getForEntity(url, Map.class);
 
 ### 4.2 High Priority Issues
 
-#### 🟠 HIGH: Missing API Endpoints (Gateway/Service Mismatch)
+#### ~~🟠 HIGH: Missing API Endpoints (Gateway/Service Mismatch)~~ ✅ RESOLVED
 
 | Gateway Route | Backend Service | Status |
 |--------------|----------------|--------|
-| `GET /api/inventory/:productId` | Inventory (Rust) | **Not implemented** |
-| `GET /api/payments/:paymentId` | Payment (Python) | **Not implemented** |
+| `GET /api/inventory/:productId` | Inventory (Rust) | ✅ Added `get_inventory_item()` handler + route |
+| `GET /api/payments/:paymentId` | Payment (Python) | ✅ Added `get_payment()` endpoint with 404 handling |
 
-Calls to these routes return 404 or proxy errors.
+The gateway routes already existed — the backend implementations were missing.
 
 #### 🟠 HIGH: No Pagination on List Endpoints
 

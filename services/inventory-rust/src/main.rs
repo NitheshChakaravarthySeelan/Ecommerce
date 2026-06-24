@@ -26,7 +26,7 @@ mod reservation;
 
 use axum::{
     body::Body,
-    extract::State,
+    extract::{Path, State},
     http::{HeaderValue, Method, Request, Response, StatusCode},
     middleware::Next,
     routing::{get, post},
@@ -95,6 +95,19 @@ async fn get_inventory(State(state): State<Arc<AppState>>) -> Result<Json<Vec<en
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(inventory))
+}
+
+/// Returns a single inventory item by product ID. 404 if not found.
+async fn get_inventory_item(
+    State(state): State<Arc<AppState>>,
+    Path(product_id): Path<String>,
+) -> Result<Json<entity::Model>, StatusCode> {
+    InventoryItem::find_by_id(&product_id)
+        .one(&state.db)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)
+        .map(Json)
 }
 
 /// Core helper: adjust quantity for a single product inside a DB transaction.
@@ -341,6 +354,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(|| async { Json(serde_json::json!({"status": "ok", "service": "inventory"})) }))
         .route("/inventory", get(get_inventory))
+        .route("/inventory/{product_id}", get(get_inventory_item))
         .route("/inventory/reserve", post(reserve_item))
         .route("/inventory/release", post(release_item))
         .route("/inventory/batch-reserve", post(batch_reserve))
