@@ -2,6 +2,8 @@ package com.ecommerce.orchestrator.entity;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+
 /**
  * Persisted state for each order's saga execution.
  *
@@ -46,6 +48,12 @@ public class SagaState {
     @Column(nullable = false)
     private boolean completed = false;
 
+    @Column(nullable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(nullable = false)
+    private LocalDateTime lastUpdatedAt = LocalDateTime.now();
+
     public SagaState() {}
 
     public SagaState(String orderId, String status, String payload, String currentStep) {
@@ -53,6 +61,8 @@ public class SagaState {
         this.status = status;
         this.payload = payload;
         this.currentStep = currentStep;
+        this.createdAt = LocalDateTime.now();
+        this.lastUpdatedAt = LocalDateTime.now();
     }
 
     public Long getId() { return id; }
@@ -71,4 +81,8 @@ public class SagaState {
     public void setRetryCount(int retryCount) { this.retryCount = retryCount; }
     public boolean isCompleted() { return completed; }
     public void setCompleted(boolean completed) { this.completed = completed; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getLastUpdatedAt() { return lastUpdatedAt; }
+    public void setLastUpdatedAt(LocalDateTime lastUpdatedAt) { this.lastUpdatedAt = lastUpdatedAt; }
 }

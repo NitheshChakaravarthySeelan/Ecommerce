@@ -459,9 +459,14 @@ If Kafka is unavailable, the order is saved to DB but `order-created` is never p
 
 **Fix:** Use an outbox pattern: save event to DB in the same transaction, then have a separate relay process publish to Kafka.
 
-#### 🟠 HIGH: No Saga Timeout
+#### ~~🟠 HIGH: No Saga Timeout~~ ✅ RESOLVED
 
-If a Kafka message is lost (e.g., `payment-processed` never arrives), the saga remains `IN_PROGRESS` indefinitely. There is no scheduled job or timeout mechanism to detect and fail stuck sagas.
+**A scheduled sweep task (`SagaTimeoutTask`) runs every 60 seconds** and fails sagas that have been `IN_PROGRESS` without update for longer than `saga.timeout-minutes` (default: 30). The task:
+- Queries `saga_states` where `completed=false` AND `status='IN_PROGRESS'` AND `lastUpdatedAt < cutoff`
+- Marks them `FAILED` with `currentStep='timed-out'`
+- Publishes `saga-failed` event so the order service marks the order as failed
+- Added `createdAt` and `lastUpdatedAt` timestamp fields to `SagaState` entity
+- Requires `@EnableScheduling` on `OrchestratorApplication`
 
 #### 🟠 HIGH: No Rate Limiting or Circuit Breaking
 

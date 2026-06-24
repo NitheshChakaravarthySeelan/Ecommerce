@@ -16,6 +16,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -302,9 +303,10 @@ public class OrderSagaOrchestrator {
         log.info("Saga completed for order: {}", event.getOrderId());
 
         sagaStateRepository.findByOrderId(event.getOrderId()).ifPresent(state -> {
-            state.setStatus("COMPLETED");
-            state.setCurrentStep("completed");
+            state.setStatus("FAILED");
+            state.setCurrentStep("failed");
             state.setCompleted(true);
+            state.setLastUpdatedAt(LocalDateTime.now());
             sagaStateRepository.save(state);
         });
     }
@@ -342,6 +344,7 @@ public class OrderSagaOrchestrator {
                     }
                     state.setRetryCount(state.getRetryCount() + 1);
                     state.setCurrentStep(step);
+                    state.setLastUpdatedAt(LocalDateTime.now());
                     sagaStateRepository.save(state);
                 } else {
                     SagaState state = new SagaState(orderId, "IN_PROGRESS", "", step);
