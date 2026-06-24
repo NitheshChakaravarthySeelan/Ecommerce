@@ -481,13 +481,15 @@ Cart data is persisted **only in Redis** with no RDB/AOF persistence or replicat
 
 **All services now use Spring Boot 3.3.3.** The orchestrator's `pom.xml` parent was updated from `3.1.5` → `3.3.3`.
 
-#### 🟠 HIGH: Global CORS (Allow-Origin: *)
+#### ~~🟠 HIGH: Global CORS (Allow-Origin: *)~~ ✅ RESOLVED
 
-Every service uses wildcard CORS (`@CrossOrigin(origins = "*")`, `allow_origins=["*"]`, `HeaderValue::from_static("*")`). In production, this opens the API to any domain.
+**All services now respect `CORS_ALLOWED_ORIGINS` env var (defaults to `*` for dev).**
+- Java services: `CorsConfig.java` reads `${cors.allowed-origins}` from env and splits on comma
+- Python services: `os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",")`
 
-#### 🟠 HIGH: Orchestrator Duplicate Dependency Import
+#### ~~🟠 HIGH: Orchestrator Duplicate Dependency Import~~ ✅ RESOLVED
 
-`OrderSagaOrchestrator.java` imports `MDC` twice (lines 8-9). This compiles but indicates sloppy code management.
+**Clean.** `OrderSagaOrchestrator.java` now has only a single `import org.slf4j.MDC;` (already cleaned up in prior edits).
 
 ### 4.3 Medium Priority Issues
 
@@ -524,9 +526,9 @@ return ResponseEntity.ok(Map.of(
 
 The quote endpoint ignores actual shipping carrier logic, zone-based pricing, weight, or speed. It's a stub.
 
-#### 🟡 MEDIUM: No Endpoint Auth for `/health` Routes
+#### ~~🟡 MEDIUM: No Endpoint Auth for `/health` Routes~~ ✅ RESOLVED
 
-The health check endpoints still go through JWT authentication (the `app.use(authenticateToken)` middleware is global). Monitoring systems need to include an Authorization header for health checks.
+**Health check routes no longer require JWT.** The gateway's `authenticateToken` middleware now skips `/health` and `/api/health/*` paths.
 
 #### 🟡 MEDIUM: Single Kafka Broker
 

@@ -51,9 +51,11 @@ logger.addFilter(TraceFilter())
 
 app = FastAPI()
 
+CORS_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

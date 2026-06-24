@@ -84,7 +84,8 @@ const SERVICES = {
  * Returns 401 if no token is provided, 403 if the token is invalid.
  */
 const authenticateToken = (req, res, next) => {
-  if (req.path === '/auth/register' || req.path === '/auth/login') {
+  const publicPaths = ['/auth/register', '/auth/login', '/health'];
+  if (publicPaths.includes(req.path) || req.path.startsWith('/api/health/')) {
     return next();
   }
 
