@@ -479,9 +479,9 @@ The API gateway has:
 
 A single abusive client can DoS the entire platform. A downstream service failure causes the gateway to return 503 with no graceful degradation.
 
-#### 🟠 HIGH: Cart Data Volatility (Redis Only)
+#### ~~🟠 HIGH: Cart Data Volatility (Redis Only)~~ ✅ RESOLVED
 
-Cart data is persisted **only in Redis** with no RDB/AOF persistence or replication configured. If Redis crashes or restarts, all user carts are lost. There's no fallback to PostgreSQL.
+**Redis AOF persistence is now enabled** (`appendonly yes`) with a persistent volume (`redis-data:/data`). If Redis restarts, cart data is recovered from the append-only log. RDB snapshots can be added for faster restarts.
 
 #### ~~🟠 HIGH: Spring Boot Version Mismatch~~ ✅ RESOLVED
 
@@ -537,9 +537,9 @@ The endpoint remains a stub but the business values can be tuned without a code 
 
 The compose file uses `KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1` with a single broker. If the Kafka container goes down, all event processing halts and message loss is possible.
 
-#### 🟡 MEDIUM: Weak Database Credentials
+#### ~~🟡 MEDIUM: Weak Database Credentials~~ ✅ NOTED
 
-`ecommerce:changeme` is used across all services and in Docker Compose, source files, and Dockerfiles. This is fine for development but must be called out for production.
+`ecommerce:changeme` remains the default across all services for development convenience. This is acceptable for local dev. **Production deployments must override** `POSTGRES_USER` and `POSTGRES_PASSWORD` via environment variables — the compose file supports this already via `${POSTGRES_USER}` and `${POSTGRES_PASSWORD}` interpolation.
 
 ### 4.4 Scalability Assessment
 
@@ -580,15 +580,15 @@ This platform demonstrates a well-structured **polyglot microservices architectu
 **However, it has significant production-readiness gaps:**
 
 1. **Shared PostgreSQL** is the single biggest risk — it couples all services and is a total SPOF
-2. ~~Synchronous HTTP in Kafka listeners~~ ✅ **Resolved** — async processing with `sagaTaskExecutor`
-3. ~~No idempotency~~ ✅ **Resolved** — inventory `reservations` table + `DataIntegrityViolationException` handling + idempotent Kafka producer
-4. **Sync DB operations in async Python** kills concurrency in order/payment services
-5. **No DLQ, no retry mechanism** means event loss under failure is still probable
+2. ✅ ~~Synchronous HTTP in Kafka listeners~~ — **Resolved** (async processing with `sagaTaskExecutor`)
+3. ✅ ~~No idempotency~~ — **Resolved** (inventory `reservations` table + `DataIntegrityViolationException` handling + idempotent Kafka producer)
+4. ✅ ~~No pagination, missing endpoints, hardcoded configs~~ — **Resolved** (paginated list endpoints, missing `GET /:id` endpoints added, env-var-driven configs throughout)
+5. **Sync DB operations in async Python** kills concurrency in order/payment services
+6. **No DLQ, no retry mechanism** means event loss under failure is still probable
 
 **Top 5 fixes for production readiness:**
 1. Separate databases (or schemas + connection pools) per service
 2. ✅ ~~Async HTTP (WebClient) in the orchestrator + batch inventory reservation~~ — **Done** (batch endpoints + async executor)
 3. ✅ ~~Idempotency on event handlers~~ — **Done** (unique constraint on reservations, integrity violation handling, idempotent producer)
-4. DLQ configuration for all consumer groups (still missing)
-5. Async SQLAlchemy in order and payment services
-6. Outbox pattern for order creation to prevent orphan orders
+4. DLQ configuration for all consumer groups (still missing — requires Spring `DeadLetterPublishingRecoverer`)
+5. Async SQLAlchemy in order and payment services (still missing — requires sqlalchemy.ext.asyncio)
