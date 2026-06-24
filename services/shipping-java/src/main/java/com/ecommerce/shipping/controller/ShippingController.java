@@ -2,6 +2,7 @@ package com.ecommerce.shipping.controller;
 
 import com.ecommerce.shipping.entity.ShippingEntity;
 import com.ecommerce.shipping.repository.ShippingRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,14 +22,19 @@ import java.util.Map;
  *   <li>GET  /shipping/{orderId}      — track a shipment</li>
  * </ul>
  */
-@CrossOrigin(origins = "*")
 @RestController
 public class ShippingController {
 
     private final ShippingRepository shippingRepository;
+    private final int estimatedDeliveryDays;
+    private final double shippingCost;
 
-    public ShippingController(ShippingRepository shippingRepository) {
+    public ShippingController(ShippingRepository shippingRepository,
+                              @Value("${shipping.estimated-days:4}") int estimatedDeliveryDays,
+                              @Value("${shipping.cost:12.50}") double shippingCost) {
         this.shippingRepository = shippingRepository;
+        this.estimatedDeliveryDays = estimatedDeliveryDays;
+        this.shippingCost = shippingCost;
     }
 
     @GetMapping("/health")
@@ -49,8 +55,8 @@ public class ShippingController {
     public ResponseEntity<Map<String, Object>> quote(@RequestParam(name = "country", defaultValue = "US") String country) {
         return ResponseEntity.ok(Map.of(
             "country", country,
-            "estimatedDeliveryDays", 4,
-            "cost", 12.50
+            "estimatedDeliveryDays", estimatedDeliveryDays,
+            "cost", shippingCost
         ));
     }
 

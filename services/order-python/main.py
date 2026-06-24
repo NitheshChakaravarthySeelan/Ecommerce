@@ -24,8 +24,10 @@ from typing import List
 from uuid import uuid4
 
 import asyncio
+import traceback
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import Column, Float, Integer, JSON, String, create_engine
@@ -198,6 +200,18 @@ async def lifespan(app: FastAPI):
         await producer.stop()
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Return structured JSON for unhandled errors instead of a raw 500."""
+    trace_id = request.headers.get("x-trace-id", "")
+    logger.error("Unhandled error: %s\n%s", exc, "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)))
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Internal server error", "traceId": trace_id},
+    )
+
 
 CORS_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",")
 

@@ -511,21 +511,17 @@ Cart data is persisted **only in Redis** with no RDB/AOF persistence or replicat
 - Lifespan `finally` block cancels the background consumer task and stops the producer
 - Cart service (Redis-only) shuts down cleanly via uvicorn's default lifespan handling
 
-#### 🟡 MEDIUM: HTTP 500 vs Meaningful Error Responses
+#### ~~🟡 MEDIUM: HTTP 500 vs Meaningful Error Responses~~ ✅ RESOLVED
 
-Many services return generic `500 INTERNAL_SERVER_ERROR` with no error body when DB operations fail. The gateway wraps these in `{"error": "Service unavailable"}` with no distinction between "not found," "timeout," and "internal error."
+**Order and payment services now have a global exception handler** that returns `{"error": "Internal server error", "traceId": "..."}` with structured JSON and trace ID instead of raw 500 responses. Gateway's `createProxyHandler` already returns 503 with traceId on proxy errors.
 
-#### 🟡 MEDIUM: Shipping Quote Is Hardcoded
+#### ~~🟡 MEDIUM: Shipping Quote Is Hardcoded~~ ✅ RESOLVED
 
-```java
-return ResponseEntity.ok(Map.of(
-    "country", country,
-    "estimatedDeliveryDays", 4,
-    "cost", 12.50
-));
-```
+**Shipping quote values are now configurable via env vars:**
+- `shipping.estimated-days` (default: 4)
+- `shipping.cost` (default: 12.50)
 
-The quote endpoint ignores actual shipping carrier logic, zone-based pricing, weight, or speed. It's a stub.
+The endpoint remains a stub but the business values can be tuned without a code change.
 
 #### ~~🟡 MEDIUM: No Endpoint Auth for `/health` Routes~~ ✅ RESOLVED
 
