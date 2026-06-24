@@ -23,15 +23,28 @@ use crate::migrator::Migrator;
 use entity::Entity as ProductEntity;
 use sea_orm::{ActiveModelTrait, ColumnTrait, Database, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use sea_orm_migration::MigratorTrait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::net::TcpListener;
+
+/// List of products with pagination metadata.
+#[derive(Serialize)]
+struct ProductListResponse {
+    data: Vec<entity::Model>,
+    total: u64,
+    limit: u64,
+    offset: u64,
+}
 
 /// Query parameters accepted by `GET /products`.
 #[derive(Deserialize)]
 struct ProductFilters {
     /// If set, only products matching this category are returned.
     category: Option<String>,
+    /// Maximum number of products to return (default 20, max 100).
+    limit: Option<u64>,
+    /// Number of products to skip (default 0).
+    offset: Option<u64>,
 }
 
 /// Request body for creating a new product.
@@ -51,27 +64,35 @@ struct AppState {
     db: DatabaseConnection,
 }
 
-/// List all products, optionally filtered by category.
-///
-/// # Note
-/// No pagination — returns every matching product in one response.
-/// For large catalogs, pagination should be added.
+/// List products, optionally filtered by category, with pagination.
 async fn list_products(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ProductFilters>,
-) -> Result<Json<Vec<entity::Model>>, StatusCode> {
-    let mut query = ProductEntity::find();
+) -> Result<Json<ProductListResponse>, StatusCode> {
+    let limit = params.limit.unwrap_or(20).min(100);
+    let offset = params.offset.unwrap_or(0);
 
-    if let Some(category) = params.category {
-        query = query.filter(entity::Column::Category.eq(category));
+    let mut query = ProductEntity::find();
+    let mut count_query = ProductEntity::find();
+
+    if let Some(ref category) = params.category {
+        query = query.filter(entity::Column::Category.eq(category.clone()));
+        count_query = count_query.filter(entity::Column::Category.eq(category.clone()));
     }
 
+    let total = count_query
+        .count(&state.db)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? as u64;
+
     let products = query
+        .offset(offset)
+        .limit(limit)
         .all(&state.db)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(Json(products))
+    Ok(Json(ProductListResponse { data: products, total, limit, offset }))
 }
 
 /// Get a single product by its UUID.

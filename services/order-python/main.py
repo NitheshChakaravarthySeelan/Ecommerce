@@ -297,23 +297,28 @@ def get_order(order_id: str):
         )
 
 
-@app.get('/orders', response_model=List[Order])
-def list_orders():
+@app.get('/orders')
+def list_orders(limit: int = 20, offset: int = 0):
     """
-    Return all orders.
-
-    Note: no pagination — this will become a performance issue under
-    load as the table grows.
+    Return orders with pagination. Defaults to limit=20, offset=0.
+    Max limit is 100 to prevent excessive memory usage.
     """
+    limit = min(limit, 100)
     with SessionLocal() as session:
-        orders_db = session.query(OrderDB).all()
-        return [
-            Order(
-                order_id=item.order_id,
-                user_id=item.user_id,
-                status=item.status,
-                total_amount=item.total_amount,
-                items=[OrderItem(**entry) for entry in item.items],
-            )
-            for item in orders_db
-        ]
+        total = session.query(OrderDB).count()
+        orders_db = session.query(OrderDB).offset(offset).limit(limit).all()
+        return {
+            "data": [
+                Order(
+                    order_id=item.order_id,
+                    user_id=item.user_id,
+                    status=item.status,
+                    total_amount=item.total_amount,
+                    items=[OrderItem(**entry) for entry in item.items],
+                )
+                for item in orders_db
+            ],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }

@@ -26,7 +26,7 @@ mod reservation;
 
 use axum::{
     body::Body,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{HeaderValue, Method, Request, Response, StatusCode},
     middleware::Next,
     routing::{get, post},
@@ -67,6 +67,22 @@ struct BatchReservationRequest {
     items: Vec<BatchReservationItem>,
 }
 
+/// Query parameters for paginated list endpoints.
+#[derive(Serialize, Deserialize)]
+struct PaginationParams {
+    limit: Option<u64>,
+    offset: Option<u64>,
+}
+
+/// Paginated response wrapper for consistency across list endpoints.
+#[derive(Serialize)]
+struct PaginatedResponse<T: Serialize> {
+    data: Vec<T>,
+    total: u64,
+    limit: u64,
+    offset: u64,
+}
+
 /// Response returned by all reservation/release endpoints.
 #[derive(Serialize)]
 struct ReservationResponse {
@@ -87,14 +103,27 @@ fn now_millis() -> String {
         .to_string()
 }
 
-/// Returns every inventory row from PostgreSQL.
-async fn get_inventory(State(state): State<Arc<AppState>>) -> Result<Json<Vec<entity::Model>>, StatusCode> {
-    let inventory = InventoryItem::find()
+/// Returns inventory rows from PostgreSQL with optional pagination.
+async fn get_inventory(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<PaginationParams>,
+) -> Result<Json<PaginatedResponse<entity::Model>>, StatusCode> {
+    let limit = params.limit.unwrap_or(20).min(100);
+    let offset = params.offset.unwrap_or(0);
+
+    let total = InventoryItem::find()
+        .count(&state.db)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? as u64;
+
+    let data = InventoryItem::find()
+        .offset(offset)
+        .limit(limit)
         .all(&state.db)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(Json(inventory))
+    Ok(Json(PaginatedResponse { data, total, limit, offset }))
 }
 
 /// Returns a single inventory item by product ID. 404 if not found.

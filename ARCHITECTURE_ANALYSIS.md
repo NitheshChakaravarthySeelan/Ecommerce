@@ -437,13 +437,14 @@ ResponseEntity<Map> resp = restTemplate.getForEntity(url, Map.class);
 
 The gateway routes already existed — the backend implementations were missing.
 
-#### 🟠 HIGH: No Pagination on List Endpoints
+#### ~~🟠 HIGH: No Pagination on List Endpoints~~ ✅ RESOLVED
 
-- `GET /orders` — returns ALL orders
-- `GET /inventory` — returns ALL inventory items
-- `GET /products` — returns ALL products (with optional category filter only)
+**All list endpoints now support `limit` and `offset` query parameters:**
+- `GET /orders?limit=20&offset=0` — Order service (Python), max limit=100
+- `GET /inventory?limit=20&offset=0` — Inventory service (Rust), max limit=100
+- `GET /products?limit=20&offset=0` — Catalog service (Rust), max limit=100
 
-Under load with thousands of records, these endpoints will consume excessive memory and time.
+All return `{data: [...], total: N, limit: N, offset: N}` paginated response bodies.
 
 #### 🟠 HIGH: Order-created Published Before Event Confirmation
 
