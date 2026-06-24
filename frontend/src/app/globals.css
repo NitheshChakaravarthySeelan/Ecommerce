@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #e9dfc8;
+  --fg: #111827;
+  --primary: #2563eb;
+}
+
+html, body {
+  @apply m-0 p-0 bg-[var(--bg)] text-[var(--fg)] antialiased;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+* { box-sizing: border-box; }
+
+main {
+  @apply min-h-screen pb-16;
+}
+
+.hero-outer {
+  @apply bg-[var(--bg)] py-12 px-4;
+}
+
+.hero-panel,
+.page-panel {
+  @apply max-w-6xl w-full mx-auto bg-white rounded-[2rem] p-8 md:p-12 shadow-[0_24px_80px_rgba(15,23,42,0.08)];
+}
+
+.hero-inner {
+  @apply flex flex-col lg:flex-row items-center gap-10;
+}
+
+.hero-left {
+  @apply flex-1;
+}
+
+.hero-right {
+  @apply flex-1 flex justify-center;
+}
+
+.hero-right img {
+  @apply w-full max-w-xl rounded-[1.5rem] shadow-xl object-cover;
+}
+
+.page-title {
+  @apply text-3xl md:text-4xl font-serif tracking-tight mb-4;
+}
+
+.page-subtitle {
+  @apply text-gray-600 mb-6 max-w-2xl;
+}
+
+.page-grid {
+  @apply grid gap-6;
+}
+
+.catalog-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6;
+}
+
+.page-card {
+  @apply bg-slate-50 rounded-[1.75rem] p-6 shadow-sm border border-gray-100 transition duration-300 ease-in-out hover:-translate-y-1 hover:shadow-lg;
+}
+
+.product-card-img {
+  @apply rounded-[1.5rem] h-56 w-full object-cover mb-6;
+}
+
+.page-summary {
+  @apply mt-6 p-6 rounded-[1.75rem] bg-slate-50 border border-gray-100 shadow-sm;
+}
+
+.links {
+  @apply flex gap-4 mt-6;
+}
+
+a {
+  @apply text-blue-600 no-underline;
+}
+
+.site-header {
+  @apply bg-white/80 backdrop-blur sticky top-0 z-40 border-b border-gray-100;
+}
+
+.site-container {
+  @apply max-w-6xl mx-auto px-6;
+}
+
+.nav-inner {
+  @apply flex flex-wrap items-center justify-between gap-4 h-20;
+}
+
+.brand {
+  @apply text-xl font-semibold text-gray-900;
+}
+
+.nav-links {
+  @apply flex flex-wrap items-center gap-4;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 text-white text-sm font-medium transition hover:bg-blue-700;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl border border-slate-200 bg-white text-slate-900 text-sm transition hover:bg-slate-100;
+}
+
+.page-tabs {
+  @apply flex flex-wrap gap-3 mb-6;
+}
+
+.category-pill {
+  @apply rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-100;
+}
+
+.category-pill.active {
+  @apply bg-blue-600 text-white border-blue-600;
+}
+
+.product-detail {
+  @apply grid gap-10 lg:grid-cols-[1.35fr_1fr] items-start;
+}
+
+.product-detail-image {
+  @apply w-full rounded-[1.75rem] shadow-xl object-cover;
+}
+
+.product-detail-summary {
+  @apply space-y-6;
+}
+
+.product-detail-summary h1 {
+  @apply text-4xl font-serif tracking-tight;
+}
+
+.product-detail-summary p {
+  @apply text-gray-600;
+}
+
+.product-detail-stats {
+  @apply grid grid-cols-2 gap-4;
+}
+
+.product-detail-stats div {
+  @apply rounded-3xl bg-slate-50 p-4 border border-gray-100;
+}

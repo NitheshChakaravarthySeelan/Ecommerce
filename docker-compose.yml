@@ -1,0 +1,176 @@
+services:
+  zookeeper:
+    image: zookeeper:3.8.1
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - 2181:2181
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.1
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - 9092:9092
+    depends_on:
+      - zookeeper
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: ecommerce
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - 6379:6379
+
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - 3001:3001
+    environment:
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
+    depends_on:
+      - auth-java
+      - catalog-rust
+      - inventory-rust
+      - cart-python
+      - order-python
+      - payment-python
+      - saga-java
+      - shipping-java
+
+  auth-java:
+    build: ./services/auth-java
+    ports:
+      - 8081:8081
+    environment:
+      - SERVER_PORT=8081
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=ecommerce
+      - POSTGRES_USER=ecommerce
+      - POSTGRES_PASSWORD=changeme
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key-that-is-at-least-256-bits-long-for-hs256}
+    depends_on:
+      - postgres
+
+  shipping-java:
+    build: ./services/shipping-java
+    ports:
+      - 8082:8082
+    environment:
+      - SERVER_PORT=8082
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=ecommerce
+      - POSTGRES_USER=ecommerce
+      - POSTGRES_PASSWORD=changeme
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+
+  saga-java:
+    build: ./services/saga-java
+    ports:
+      - 8083:8083
+    environment:
+      - SERVER_PORT=8083
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=ecommerce
+      - POSTGRES_USER=ecommerce
+      - POSTGRES_PASSWORD=changeme
+    depends_on:
+      - kafka
+      - postgres
+
+  orchestrator-java:
+    build: ./services/orchestrator-java
+    ports:
+      - 8089:8089
+    environment:
+      - SERVER_PORT=8089
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=ecommerce
+      - POSTGRES_USER=ecommerce
+      - POSTGRES_PASSWORD=changeme
+    depends_on:
+      - kafka
+      - postgres
+
+  catalog-rust:
+    build: ./services/catalog-rust
+    ports:
+      - 8084:8084
+    environment:
+      - DATABASE_URL=postgres://ecommerce:changeme@postgres:5432/ecommerce
+    depends_on:
+      - postgres
+
+  inventory-rust:
+    build: ./services/inventory-rust
+    ports:
+      - 8085:8085
+    environment:
+      - DATABASE_URL=postgres://ecommerce:changeme@postgres:5432/ecommerce
+    depends_on:
+      - postgres
+
+  cart-python:
+    build: ./services/cart-python
+    ports:
+      - 8086:8086
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  order-python:
+    build: ./services/order-python
+    ports:
+      - 8087:8087
+    environment:
+      - DATABASE_URL=postgresql+psycopg://ecommerce:changeme@postgres:5432/ecommerce
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+
+  payment-python:
+    build: ./services/payment-python
+    ports:
+      - 8088:8088
+    environment:
+      - DATABASE_URL=postgresql+psycopg://ecommerce:changeme@postgres:5432/ecommerce
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - postgres
+      - kafka
+
+  frontend:
+    build: ./frontend
+    ports:
+      - 3000:3000
+    depends_on:
+      - auth-java
+      - catalog-rust
+      - cart-python
+      - order-python
+      - payment-python
+
+volumes:
+  postgres-data:
