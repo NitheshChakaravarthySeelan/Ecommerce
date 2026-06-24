@@ -27,6 +27,56 @@ const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET;
+
+// ── Rate limiter (in-memory) ──────────────────────────────────────
+const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10);
+const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || '100', 10);
+const rateLimitStore = new Map();
+
+const rateLimiter = (req, res, next) => {
+  const key = req.ip || req.connection.remoteAddress || 'unknown';
+  const now = Date.now();
+  if (!rateLimitStore.has(key) || now - rateLimitStore.get(key).windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitStore.set(key, { windowStart: now, count: 1 });
+    return next();
+  }
+  const entry = rateLimitStore.get(key);
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    return res.status(429).json({
+      error: 'Too many requests',
+      traceId: req.traceId,
+      retryAfterMs: RATE_LIMIT_WINDOW_MS - (now - entry.windowStart),
+    });
+  }
+  next();
+};
+
+// ── Circuit breaker (simple failure counting) ─────────────────────
+const CIRCUIT_BREAKER_THRESHOLD = parseInt(process.env.CIRCUIT_BREAKER_THRESHOLD || '5', 10);
+const CIRCUIT_BREAKER_RESET_MS = parseInt(process.env.CIRCUIT_BREAKER_RESET_MS || '30000', 10);
+const circuitState = new Map(); // target → { failures, openSince }
+
+const circuitBreaker = (target) => {
+  const state = circuitState.get(target) || { failures: 0, openSince: null };
+  if (state.openSince && Date.now() - state.openSince > CIRCUIT_BREAKER_RESET_MS) {
+    circuitState.set(target, { failures: 0, openSince: null });
+    console.log(`Circuit breaker reset for ${target}`);
+  } else if (state.openSince) {
+    return false; // circuit open
+  }
+  return true; // circuit closed
+};
+
+const recordFailure = (target) => {
+  const state = circuitState.get(target) || { failures: 0, openSince: null };
+  state.failures++;
+  if (state.failures >= CIRCUIT_BREAKER_THRESHOLD) {
+    state.openSince = Date.now();
+    console.log(`Circuit breaker OPEN for ${target} after ${state.failures} failures`);
+  }
+  circuitState.set(target, state);
+};
 if (!JWT_SECRET || JWT_SECRET.length < 32) {
     console.error('FATAL: JWT_SECRET environment variable must be set and at least 32 characters');
     process.exit(1);
@@ -57,6 +107,8 @@ app.use((req, res, next) => {
   }));
   next();
 });
+
+app.use(rateLimiter);
 
 // ── Service registry ─────────────────────────────────────────────
 
@@ -133,10 +185,12 @@ const createProxyHandler = (target) => {
   });
 
   proxy.on('error', (err, req, res) => {
+    recordFailure(target);
     console.error(JSON.stringify({
       timestamp: new Date().toISOString(),
       traceId: req.traceId,
       type: 'PROXY_ERROR',
+      target,
       error: err.message,
     }));
     res.status(503).json({
@@ -145,12 +199,26 @@ const createProxyHandler = (target) => {
     });
   });
 
+  proxy.on('proxyRes', (proxyRes, req) => {
+    if (proxyRes.statusCode >= 500) {
+      recordFailure(target);
+    }
+  });
+
   proxy.on('proxyReq', (proxyReq, req) => {
     proxyReq.setHeader('x-trace-id', req.traceId);
     proxyReq.setHeader('x-user-id', req.user?.id || 'anonymous');
   });
 
-  return (req, res) => proxy.web(req, res);
+  return (req, res) => {
+    if (!circuitBreaker(target)) {
+      return res.status(503).json({
+        error: 'Service temporarily unavailable (circuit breaker open)',
+        traceId: req.traceId,
+      });
+    }
+    proxy.web(req, res);
+  };
 };
 
 // ── Route definitions ────────────────────────────────────────────

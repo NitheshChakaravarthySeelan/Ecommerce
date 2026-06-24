@@ -469,15 +469,12 @@ If Kafka is unavailable, the order is saved to DB but `order-created` is never p
 - Added `createdAt` and `lastUpdatedAt` timestamp fields to `SagaState` entity
 - Requires `@EnableScheduling` on `OrchestratorApplication`
 
-#### 🟠 HIGH: No Rate Limiting or Circuit Breaking
+#### ~~🟠 HIGH: No Rate Limiting or Circuit Breaking~~ ✅ RESOLVED
 
-The API gateway has:
-- ❌ No rate limiting
-- ❌ No circuit breaker
-- ❌ No request queuing
-- ❌ No retry logic on proxy failures
-
-A single abusive client can DoS the entire platform. A downstream service failure causes the gateway to return 503 with no graceful degradation.
+**In-memory rate limiter and circuit breaker added to the API gateway:**
+- Rate limiter: 100 requests per 60-second window per IP (configurable via `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`)
+- Circuit breaker: opens after 5 consecutive 5xx/proxy errors per target service, auto-resets after 30 seconds (configurable via `CIRCUIT_BREAKER_THRESHOLD`, `CIRCUIT_BREAKER_RESET_MS`)
+- Returns proper 429 (rate limit) and 503 (circuit open) JSON responses with trace IDs
 
 #### ~~🟠 HIGH: Cart Data Volatility (Redis Only)~~ ✅ RESOLVED
 
