@@ -50,7 +50,8 @@ class OrderSagaOrchestratorTest {
         }).when(sagaTaskExecutor).execute(any(Runnable.class));
 
         orchestrator = new OrderSagaOrchestrator(
-            kafkaTemplate, sagaStateRepository, restTemplate, sagaTaskExecutor);
+            kafkaTemplate, sagaStateRepository, restTemplate, sagaTaskExecutor,
+            "http://inventory-rust:8085/inventory", "http://order-python:8087/orders");
     }
 
     @Test

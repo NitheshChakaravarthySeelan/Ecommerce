@@ -500,14 +500,9 @@ Cart data is persisted **only in Redis** with no RDB/AOF persistence or replicat
 - Python services (order, payment): `pool_size=5`, `max_overflow=5`, `pool_pre_ping=True`
 - All configurable via environment variables (`DB_POOL_MAX`, `DB_POOL_SIZE`, etc.)
 
-#### 🟡 MEDIUM: Hardcoded Service URLs in Orchestrator
+#### ~~🟡 MEDIUM: Hardcoded Service URLs in Orchestrator~~ ✅ RESOLVED
 
-```java
-private static final String INVENTORY_URL = "http://inventory-rust:8085/inventory";
-private static final String ORDER_URL = "http://order-python:8087/orders";
-```
-
-These are hardcoded constants rather than environment variables or service discovery (Consul, Eureka, K8s DNS).
+**Service URLs are now configurable via `@Value("${inventory.url:...}")` and `@Value("${order.url:...}")`.** Defaults match the original hardcoded values for backward compatibility. Can be overridden via `inventory.url` and `order.url` environment variables.
 
 #### ~~🟡 MEDIUM: No Graceful Shutdown in Python Services~~ ✅ RESOLVED
 

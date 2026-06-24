@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
@@ -78,15 +79,19 @@ public class OrderSagaOrchestrator {
     public OrderSagaOrchestrator(KafkaTemplate<String, Object> kafkaTemplate,
                                   SagaStateRepository sagaStateRepository,
                                   RestTemplate restTemplate,
-                                  @Qualifier("sagaTaskExecutor") Executor sagaTaskExecutor) {
+                                  @Qualifier("sagaTaskExecutor") Executor sagaTaskExecutor,
+                                  @Value("${inventory.url:http://inventory-rust:8085/inventory}") String inventoryUrl,
+                                  @Value("${order.url:http://order-python:8087/orders}") String orderUrl) {
         this.kafkaTemplate = kafkaTemplate;
         this.sagaStateRepository = sagaStateRepository;
         this.restTemplate = restTemplate;
         this.sagaTaskExecutor = sagaTaskExecutor;
+        this.INVENTORY_URL = inventoryUrl;
+        this.ORDER_URL = orderUrl;
     }
 
-    private static final String INVENTORY_URL = "http://inventory-rust:8085/inventory";
-    private static final String ORDER_URL = "http://order-python:8087/orders";
+    private final String INVENTORY_URL;
+    private final String ORDER_URL;
 
     // ──────────────────────────────────────────────
     // Internal HTTP helpers
