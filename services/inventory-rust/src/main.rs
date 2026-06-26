@@ -36,8 +36,8 @@ use entity::Entity as InventoryItem;
 use migrator::Migrator;
 use reservation::Entity as Reservation;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Database, DatabaseConnection, EntityTrait, QueryFilter,
-    Set, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, Database, DatabaseConnection, EntityTrait, PaginatorTrait,
+    QueryFilter, QuerySelect, Set, TransactionTrait,
 };
 use sea_orm_migration::MigratorTrait;
 use serde::{Deserialize, Serialize};
