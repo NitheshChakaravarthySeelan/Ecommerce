@@ -113,15 +113,15 @@ app.use(rateLimiter);
 // ── Service registry ─────────────────────────────────────────────
 
 const SERVICES = {
-  catalog: 'http://localhost:8084',
-  inventory: 'http://localhost:8085',
-  cart: 'http://localhost:8086',
-  order: 'http://localhost:8087',
-  payment: 'http://localhost:8088',
-  auth: 'http://localhost:8081',
-  saga: 'http://localhost:8083',
-  shipping: 'http://localhost:8082',
-  orchestrator: 'http://localhost:8089',
+  catalog: process.env.CATALOG_URL || 'http://localhost:8084',
+  inventory: process.env.INVENTORY_URL || 'http://localhost:8085',
+  cart: process.env.CART_URL || 'http://localhost:8086',
+  order: process.env.ORDER_URL || 'http://localhost:8087',
+  payment: process.env.PAYMENT_URL || 'http://localhost:8088',
+  auth: process.env.AUTH_URL || 'http://localhost:8081',
+  saga: process.env.SAGA_URL || 'http://localhost:8083',
+  shipping: process.env.SHIPPING_URL || 'http://localhost:8082',
+  orchestrator: process.env.ORCHESTRATOR_URL || 'http://localhost:8089',
 };
 
 // ── JWT authentication ───────────────────────────────────────────
