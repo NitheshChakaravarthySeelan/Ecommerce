@@ -21,7 +21,7 @@ use axum::{
 };
 use crate::migrator::Migrator;
 use entity::Entity as ProductEntity;
-use sea_orm::{ActiveModelTrait, ColumnTrait, Database, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, Database, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect, Set};
 use sea_orm_migration::MigratorTrait;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
