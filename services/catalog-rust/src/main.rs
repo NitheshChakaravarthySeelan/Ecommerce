@@ -187,7 +187,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health))
         .route("/products", get(list_products).post(create_product))
-        .route("/products/:id", get(product_detail))
+        .route("/products/{id}", get(product_detail))
         .layer(axum::middleware::from_fn(cors))
         .with_state(shared_state);
 

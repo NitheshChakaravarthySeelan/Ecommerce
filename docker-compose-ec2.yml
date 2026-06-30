@@ -134,7 +134,7 @@ services:
       - postgres
 
   catalog-rust:
-    image: nith141/catalog-rust:v1
+    image: nith141/catalog-rust:v2
     ports:
       - 8084:8084
     environment:
